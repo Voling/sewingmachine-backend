@@ -1,0 +1,268 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SewingMachine Backend - SAM template
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 900
+    MemorySize: 1024
+    Tracing: Active
+    Environment:
+      Variables:
+        AWS_REGION: !Ref AWS::Region
+        ALLOWED_ORIGIN: https://awssewingmachine.com
+
+Parameters:
+  StackName:
+    Type: String
+    Default: sewingmachine-backend
+  BronzePrefixS3:
+    Type: String
+    Default: s3://fabric-aws-poc/bronze/
+  SilverPrefixS3:
+    Type: String
+    Default: s3://fabric-aws-poc/silver/
+  GoldPrefixS3:
+    Type: String
+    Default: s3://fabric-aws-poc/gold/
+  AthenaOutput:
+    Type: String
+    Default: s3://fabric-aws-poc/_dq/athena-results/
+  AthenaWorkgroup:
+    Type: String
+    Default: primary
+  AthenaCatalog:
+    Type: String
+    Default: AwsDataCatalog
+  DdbTableName:
+    Type: String
+    Default: sewingmachine-cooldowns
+  OrchestratorFnName:
+    Type: String
+    Default: sewingmachine-orchestrator
+  DmsTaskArn:
+    Type: String
+  FixedRun:
+    Type: String
+    Default: '2025-08-13'
+  EventBusName:
+    Type: String
+    Default: default
+
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: v1
+      Cors:
+        AllowOrigin: "'https://awssewingmachine.com'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowMethods: "'GET,POST,OPTIONS'"
+
+  CooldownsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref DdbTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: resource
+          AttributeType: S
+      KeySchema:
+        - AttributeName: resource
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-health'
+      CodeUri: .
+      Handler: health.lambda_handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /health
+            Method: get
+
+  RunFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-run'
+      CodeUri: .
+      Handler: run.lambda_handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DdbTableName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+                - s3:ListBucketMultipartUploads
+              Resource: '*'
+      Environment:
+        Variables:
+          DDB_TABLE: !Ref DdbTableName
+          ORCHESTRATOR_FN: !Ref OrchestratorFunction
+          BRONZE_PREFIX_S3: !Ref BronzePrefixS3
+          SILVER_PREFIX_S3: !Ref SilverPrefixS3
+          GOLD_PREFIX_S3: !Ref GoldPrefixS3
+          PRESIGN_TTL_SECONDS: '900'
+          MAX_DIRS_PER_LAYER: '25'
+          MAX_FILES_PER_DIR: '50'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /run
+            Method: post
+
+  OrchestratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Ref OrchestratorFnName
+      CodeUri: .
+      Handler: orchestrator.lambda_handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dms:StartReplicationTask
+              Resource: !Ref DmsTaskArn
+        - Statement:
+            - Effect: Allow
+              Action:
+                - events:PutRule
+                - events:PutTargets
+                - events:RemoveTargets
+                - events:DeleteRule
+              Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - lambda:AddPermission
+              Resource: '*'
+      Environment:
+        Variables:
+          DMS_TASK_ARN: !Ref DmsTaskArn
+          AWS_ACCOUNT_ID: !Ref AWS::AccountId
+          FIXED_RUN: !Ref FixedRun
+          ATHENA_RUNNER_FUNCTION_ARN: !GetAtt AthenaRunnerFunction.Arn
+          EVENTBUS_NAME: !Ref EventBusName
+
+  AthenaRunnerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-athena-runner'
+      CodeUri: .
+      Handler: athena_runner.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - athena:StartQueryExecution
+                - athena:GetQueryExecution
+                - athena:GetQueryResults
+              Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:ListBucket
+              Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - events:RemoveTargets
+                - events:DeleteRule
+              Resource: '*'
+      Environment:
+        Variables:
+          ATHENA_OUTPUT: !Ref AthenaOutput
+          ATHENA_WG: !Ref AthenaWorkgroup
+          ATHENA_CATALOG: !Ref AthenaCatalog
+          EVENTBUS_NAME: !Ref EventBusName
+
+  QueryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-query'
+      CodeUri: .
+      Handler: query.lambda_handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - athena:StartQueryExecution
+                - athena:GetQueryExecution
+                - athena:GetQueryResults
+              Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:ListBucket
+              Resource: '*'
+      Environment:
+        Variables:
+          ATHENA_OUTPUT: !Ref AthenaOutput
+          ATHENA_WG: !Ref AthenaWorkgroup
+          ATHENA_CATALOG: !Ref AthenaCatalog
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /query
+            Method: post
+
+  SchemasFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-schemas'
+      CodeUri: .
+      Handler: schemas.lambda_handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - glue:GetDatabases
+                - glue:GetTables
+              Resource: '*'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /schemas
+            Method: get
+
+Outputs:
+  ApiUrl:
+    Description: API base URL
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/v1'
+  RunFunctionName:
+    Value: !Ref RunFunction
+  OrchestratorFunctionName:
+    Value: !Ref OrchestratorFunction
+  AthenaRunnerFunctionName:
+    Value: !Ref AthenaRunnerFunction
+  QueryFunctionName:
+    Value: !Ref QueryFunction
+  SchemasFunctionName:
+    Value: !Ref SchemasFunction
+
+

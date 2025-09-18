@@ -1,0 +1,30 @@
+version = 0.1
+
+[default]
+[default.global]
+stack_name = "sewingmachine-backend"
+region = "us-west-1"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+resolve_s3 = true
+region = "us-west-1"
+stack_name = "sewingmachine-backend"
+parameter_overrides = [
+  "BronzePrefixS3=s3://fabric-aws-poc/bronze/",
+  "SilverPrefixS3=s3://fabric-aws-poc/silver/",
+  "GoldPrefixS3=s3://fabric-aws-poc/gold/",
+  "AthenaOutput=s3://fabric-aws-poc/_dq/athena-results/",
+  "AthenaWorkgroup=primary",
+  "AthenaCatalog=AwsDataCatalog",
+  "DdbTableName=sewingmachine-cooldowns",
+  "OrchestratorFnName=sewingmachine-orchestrator",
+  "FixedRun=2025-08-13"
+]
+
+
