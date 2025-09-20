@@ -1,4 +1,3 @@
-# file: schemas_api.py
 import os, json
 from dotenv import load_dotenv
 import boto3
@@ -27,7 +26,6 @@ def lambda_handler(event, _ctx):
     for page in paginator.paginate():
         for db in page.get("DatabaseList", []):
             name = db["Name"]
-            # List tables (limit to, say, 200 to keep it quick)
             tables = []
             tp = glue.get_paginator("get_tables")
             for tpage in tp.paginate(DatabaseName=name, PaginationConfig={"MaxItems": 200}):
@@ -35,3 +33,5 @@ def lambda_handler(event, _ctx):
                     tables.append(t["Name"])
             dbs.append({"name": name, "tables": tables})
     return resp({"databases": dbs})
+
+

@@ -1,4 +1,3 @@
-# lambda_function.py  (Python 3.11)
 import json, os, uuid, datetime
 from dotenv import load_dotenv
 import boto3
@@ -12,20 +11,16 @@ TASK_ARN = os.environ['DMS_TASK_ARN']
 EVENTBUS = os.environ.get('EVENTBUS_NAME', 'default')
 ATHENA_RUNNER_FN = os.environ['ATHENA_RUNNER_FUNCTION_ARN']
 
-# fixed run
-RUN = os.environ.get('FIXED_RUN', '2025-08-13')  # keep forever
-
+RUN = os.environ.get('FIXED_RUN', '2025-08-13')
 
 def lambda_handler(event, ctx):
     job_id = str(uuid.uuid4())
 
-    # 1) Start DMS reload (no waits, no rotation)
     dms.start_replication_task(
         ReplicationTaskArn=TASK_ARN,
         StartReplicationTaskType='reload-target'
     )
 
-    # 2) One-off EB rule to trigger the runner when DMS finishes
     rule_name = f"sewingmachine-dms-finished-{job_id}"
     pattern = {
         "source": ["aws.dms"],
@@ -43,7 +38,6 @@ def lambda_handler(event, ctx):
     )
     rule_arn = r.get('RuleArn')
 
-    # target = runner with the fixed run + cleanup hint
     target_input = json.dumps({
         "jobId": job_id,
         "run": RUN,
@@ -59,7 +53,6 @@ def lambda_handler(event, ctx):
         }]
     )
 
-    # allow EB to invoke runner
     lambda_.add_permission(
         FunctionName=ATHENA_RUNNER_FN,
         StatementId=f"eb-invoke-{job_id}",
@@ -73,3 +66,5 @@ def lambda_handler(event, ctx):
         "headers": {"content-type": "application/json"},
         "body": json.dumps({"jobId": job_id, "status": "accepted", "run": RUN})
     }
+
+

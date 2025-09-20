@@ -32,30 +32,25 @@ def handler(event, ctx):
     run = payload.get('run', '2025-08-13')
     cleanup_rule = payload.get('cleanupRule')
 
-    # 1) STAGE (fixed table names, overwrite)
     run_sql(RESIDENT_CTAS.replace(':RUN', run), 'staging')
     run_sql(VISIT_CTAS.replace(':RUN', run), 'staging')
 
-    # 2) SILVER upserts
     run_sql(RESIDENT_MERGE, 'silver')
     run_sql(VISIT_MERGE, 'silver')
 
-    # 3) Soft deletes (optional – keep; snapshot may drop rows)
     run_sql(RESIDENT_SOFT_DELETE, 'silver')
     run_sql(VISIT_SOFT_DELETE, 'silver')
 
-    # 4) GOLD upserts (dim + fact)
     run_sql(DIM_RESIDENT_MERGE, 'gold')
     run_sql(FACT_VISIT_MERGE, 'gold')
 
-    # 5) cleanup EB rule
     if cleanup_rule:
         events.remove_targets(Rule=cleanup_rule, Ids=["athena-runner"], EventBusName=EVENTBUS)
         events.delete_rule(Name=cleanup_rule, EventBusName=EVENTBUS, Force=True)
 
     return {"ok": True, "run": run}
 
-
+# SQL strings identical to the top-level version
 RESIDENT_CTAS = """
 DROP TABLE IF EXISTS staging.dbo_resident_latest;
 CREATE TABLE staging.dbo_resident_latest
@@ -176,7 +171,6 @@ WHEN NOT MATCHED THEN INSERT (
 );
 """
 
-# MERGE the fact so repeated runs don't duplicate
 FACT_VISIT_MERGE = """
 MERGE INTO gold.fact_visit f
 USING (

@@ -13,3 +13,5 @@ def lambda_handler(event, _ctx):
         },
         "body": json.dumps({"status":"ok","time": datetime.datetime.utcnow().isoformat()+"Z"})
     }
+
+

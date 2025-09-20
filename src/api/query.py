@@ -1,4 +1,3 @@
-
 import os, json, time
 from dotenv import load_dotenv
 import boto3
@@ -6,8 +5,8 @@ import boto3
 REGION = os.environ.get("AWS_REGION", "us-west-1")
 ATHENA_WG = os.environ.get("ATHENA_WG", "primary")
 ATHENA_OUTPUT = os.environ["ATHENA_OUTPUT"]
-ATHENA_CATALOG = os.environ.get("ATHENA_CATALOG", "AwsDataCatalog")  # <-- add this
-ATHENA_DEFAULT_DB = os.environ.get("ATHENA_DEFAULT_DB")              # optional
+ATHENA_CATALOG = os.environ.get("ATHENA_CATALOG", "AwsDataCatalog")
+ATHENA_DEFAULT_DB = os.environ.get("ATHENA_DEFAULT_DB")
 ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "*")
 
 load_dotenv()
@@ -25,7 +24,6 @@ def resp(status, body):
     }
 
 def start_and_wait(sql, database):
-    # Always provide Catalog; include Database if provided (or fall back to default)
     qctx = {"Catalog": ATHENA_CATALOG}
     if database:
         qctx["Database"] = database
@@ -92,3 +90,5 @@ def lambda_handler(event, _ctx):
         "queryExecutionId": qid or body["queryExecutionId"],
         "nextPageToken": next_token
     })
+
+

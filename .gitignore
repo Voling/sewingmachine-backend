@@ -1,2 +1,7 @@
 .aws-sam
 .env
+build/
+.terraform/
+terraform.tfstate*
+*.zip
+myenv
