@@ -1,7 +1,50 @@
-.aws-sam
+# Environment files
 .env
-build/
-.terraform/
-terraform.tfstate*
-*.zip
+.env.*
 myenv
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+dist/
+build/
+pip-wheel-metadata/
+*.whl
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Logs
+*.log
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+
+# Terraform
+.terraform/
+terraform.tfstate
+terraform.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+*.tfplan
+
+# Deployment artifacts
+.aws-sam/
+*.zip
