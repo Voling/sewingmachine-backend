@@ -1,10 +1,8 @@
 import os, json
-from dotenv import load_dotenv
 import boto3
 
 REGION = os.environ.get("AWS_REGION","us-west-1")
 ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN","*")
-load_dotenv()
 glue = boto3.client("glue", region_name=REGION)
 
 def resp(body):

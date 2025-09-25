@@ -1,5 +1,4 @@
 import os, json, time, uuid, datetime
-from dotenv import load_dotenv
 import boto3
 from botocore.exceptions import ClientError
 
@@ -18,7 +17,6 @@ PRESIGN_TTL_SECONDS = int(os.environ.get("PRESIGN_TTL_SECONDS", "900"))
 MAX_DIRS_PER_LAYER  = int(os.environ.get("MAX_DIRS_PER_LAYER", "25"))
 MAX_FILES_PER_DIR   = int(os.environ.get("MAX_FILES_PER_DIR", "50"))
 
-load_dotenv()
 ddb     = boto3.client("dynamodb", region_name=REGION)
 lambda_ = boto3.client("lambda",    region_name=REGION)
 s3      = boto3.client("s3",        region_name=REGION)

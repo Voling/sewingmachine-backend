@@ -1,8 +1,5 @@
 import os, json, time
-from dotenv import load_dotenv
 import boto3
-
-load_dotenv()
 athena = boto3.client('athena')
 events = boto3.client('events')
 

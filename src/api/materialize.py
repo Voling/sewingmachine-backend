@@ -1,8 +1,5 @@
 import os, json, time
-from dotenv import load_dotenv
 import boto3
-
-load_dotenv()
 
 REGION = os.environ.get("AWS_REGION","us-west-1")
 ATHENA_WG = os.environ.get("ATHENA_WG","fabric-wg")

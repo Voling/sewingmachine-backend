@@ -1,6 +1,4 @@
 import os, json, datetime
-from dotenv import load_dotenv
-load_dotenv()
 ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN","*")
 
 def lambda_handler(event, _ctx):

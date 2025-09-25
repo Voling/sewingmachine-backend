@@ -1,8 +1,5 @@
 import json, os, uuid, datetime
-from dotenv import load_dotenv
 import boto3
-
-load_dotenv()
 dms = boto3.client('dms')
 events = boto3.client('events')
 lambda_ = boto3.client('lambda')

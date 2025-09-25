@@ -1,5 +1,4 @@
 import os, json, time
-from dotenv import load_dotenv
 import boto3
 
 REGION = os.environ.get("AWS_REGION", "us-west-1")
@@ -9,7 +8,6 @@ ATHENA_CATALOG = os.environ.get("ATHENA_CATALOG", "AwsDataCatalog")
 ATHENA_DEFAULT_DB = os.environ.get("ATHENA_DEFAULT_DB")
 ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "*")
 
-load_dotenv()
 athena = boto3.client("athena", region_name=REGION)
 
 def resp(status, body):
