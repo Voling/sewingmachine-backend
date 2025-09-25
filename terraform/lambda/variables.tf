@@ -12,5 +12,3 @@ variable "athena_output" { type = string }
 variable "athena_wg" { type = string }
 variable "athena_catalog" { type = string }
 variable "tags" { type = map(string) }
-
-

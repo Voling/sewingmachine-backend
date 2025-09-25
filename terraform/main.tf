@@ -34,39 +34,46 @@ module "dynamodb" {
 }
 
 module "lambda" {
-  source            = "./lambda"
-  project_name      = local.project_name
-  lambda_role_arn   = module.iam.lambda_role_arn
-  allowed_origin    = var.allowed_origin
-  ddb_table_name    = module.dynamodb.table_name
-  bronze_prefix_s3  = var.bronze_prefix_s3
-  silver_prefix_s3  = var.silver_prefix_s3
-  gold_prefix_s3    = var.gold_prefix_s3
-  dms_task_arn      = var.dms_task_arn
-  fixed_run         = var.fixed_run
-  event_bus_name    = var.event_bus_name
-  athena_output     = var.athena_output
-  athena_wg         = var.athena_wg
-  athena_catalog    = var.athena_catalog
-  tags              = local.tags
+  source           = "./lambda"
+  project_name     = local.project_name
+  lambda_role_arn  = module.iam.lambda_role_arn
+  allowed_origin   = var.allowed_origin
+  ddb_table_name   = module.dynamodb.table_name
+  bronze_prefix_s3 = var.bronze_prefix_s3
+  silver_prefix_s3 = var.silver_prefix_s3
+  gold_prefix_s3   = var.gold_prefix_s3
+  dms_task_arn     = var.dms_task_arn
+  fixed_run        = var.fixed_run
+  event_bus_name   = var.event_bus_name
+  athena_output    = var.athena_output
+  athena_wg        = var.athena_wg
+  athena_catalog   = var.athena_catalog
+  tags             = local.tags
 }
 
 module "apigw" {
-  source                 = "./apigw"
-  project_name           = local.project_name
-  aws_region             = var.aws_region
-  cognito_user_pool_id   = var.cognito_user_pool_id
-  tags                   = local.tags
-  lambda_health_invoke_arn  = module.lambda.invoke_arns["health"]
-  lambda_run_invoke_arn     = module.lambda.invoke_arns["run"]
-  lambda_query_invoke_arn   = module.lambda.invoke_arns["query"]
-  lambda_schemas_invoke_arn = module.lambda.invoke_arns["schemas"]
-  lambda_health_name        = module.lambda.names["health"]
-  lambda_run_name           = module.lambda.names["run"]
-  lambda_query_name         = module.lambda.names["query"]
-  lambda_schemas_name       = module.lambda.names["schemas"]
+  source                        = "./apigw"
+  project_name                  = local.project_name
+  rest_api_name                 = var.rest_api_name
+  allowed_origin                = var.allowed_origin
+  cloudwatch_role_arn           = var.apigw_cloudwatch_role_arn
+  aws_region                    = var.aws_region
+  cognito_user_pool_id          = var.cognito_user_pool_id
+  tags                          = local.tags
+  custom_domain_name            = var.custom_domain_name
+  certificate_arn               = var.certificate_arn
+  custom_domain_endpoint_type   = var.custom_domain_endpoint_type
+  lambda_health_invoke_arn      = module.lambda.invoke_arns["health"]
+  lambda_run_invoke_arn         = module.lambda.invoke_arns["run"]
+  lambda_query_invoke_arn       = module.lambda.invoke_arns["query"]
+  lambda_schemas_invoke_arn     = module.lambda.invoke_arns["schemas"]
+  lambda_materialize_invoke_arn = module.lambda.invoke_arns["materialize"]
+  lambda_health_name            = module.lambda.names["health"]
+  lambda_run_name               = module.lambda.names["run"]
+  lambda_query_name             = module.lambda.names["query"]
+  lambda_schemas_name           = module.lambda.names["schemas"]
+  lambda_materialize_name       = module.lambda.names["materialize"]
 }
-
 module "ssm" {
   source               = "./ssm"
   allowed_origin       = var.allowed_origin
@@ -84,5 +91,4 @@ module "ssm" {
 }
 
 output "api_invoke_url" { value = module.apigw.invoke_url }
-
 

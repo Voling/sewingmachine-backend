@@ -5,7 +5,17 @@ variable "aws_region" {
 
 variable "project_name" {
   type    = string
-  default = "sewingmachine-backend"
+  default = "sewingmachine"
+}
+
+variable "rest_api_name" {
+  type    = string
+  default = "SewingMachine"
+}
+
+variable "apigw_cloudwatch_role_arn" {
+  type    = string
+  default = ""
 }
 
 variable "ddb_table_name" {
@@ -61,6 +71,20 @@ variable "event_bus_name" {
 variable "cognito_user_pool_id" {
   type    = string
   default = "us-west-1_0nv0MHKcd"
+}
+
+variable "custom_domain_name" {
+  type    = string
+  default = "awssewingmachine.com"
+}
+
+variable "certificate_arn" {
+  type = string
+}
+
+variable "custom_domain_endpoint_type" {
+  type    = string
+  default = "REGIONAL"
 }
 
 variable "dms_task_arn" {
