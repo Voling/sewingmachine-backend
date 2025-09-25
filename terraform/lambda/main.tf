@@ -1,4 +1,4 @@
-data "archive_file" "api_zip" {
+﻿data "archive_file" "api_zip" {
   type        = "zip"
   source_dir  = "${path.root}/../src/api"
   output_path = "${path.root}/../build/api.zip"
@@ -13,7 +13,7 @@ data "archive_file" "jobs_zip" {
 resource "aws_lambda_function" "health" {
   function_name    = "${var.project_name}-health"
   role             = var.lambda_role_arn
-  handler          = "health.lambda_handler"
+  handler          = "handlers.health.lambda_handler"
   runtime          = "python3.11"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
@@ -33,7 +33,7 @@ resource "aws_lambda_function" "health" {
 resource "aws_lambda_function" "run" {
   function_name    = "${var.project_name}-run"
   role             = var.lambda_role_arn
-  handler          = "run.lambda_handler"
+  handler          = "handlers.run.lambda_handler"
   runtime          = "python3.11"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
@@ -107,7 +107,7 @@ resource "aws_lambda_function" "athena_runner" {
 resource "aws_lambda_function" "query" {
   function_name    = "${var.project_name}-query"
   role             = var.lambda_role_arn
-  handler          = "query.lambda_handler"
+  handler          = "handlers.query.lambda_handler"
   runtime          = "python3.11"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
@@ -130,7 +130,7 @@ resource "aws_lambda_function" "query" {
 resource "aws_lambda_function" "schemas" {
   function_name    = "${var.project_name}-schemas"
   role             = var.lambda_role_arn
-  handler          = "schemas.lambda_handler"
+  handler          = "handlers.schemas.lambda_handler"
   runtime          = "python3.11"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
@@ -150,7 +150,7 @@ resource "aws_lambda_function" "schemas" {
 resource "aws_lambda_function" "materialize" {
   function_name    = "${var.project_name}-materialize"
   role             = var.lambda_role_arn
-  handler          = "materialize.lambda_handler"
+  handler          = "handlers.materialize.lambda_handler"
   runtime          = "python3.11"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
