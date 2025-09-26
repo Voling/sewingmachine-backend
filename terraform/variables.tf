@@ -1,4 +1,4 @@
-variable "aws_region" {
+﻿variable "aws_region" {
   type    = string
   default = "us-west-1"
 }
@@ -55,7 +55,7 @@ variable "athena_catalog" {
 
 variable "allowed_origin" {
   type    = string
-  default = "https://awssewingmachine.com"
+  default = "https://awssewingmachine.com,http://localhost:5173"
 }
 
 variable "fixed_run" {
