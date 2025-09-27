@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import datetime
 from typing import Dict
@@ -14,5 +14,5 @@ class HealthService:
         return {
             "status": "ok",
             "service": self._settings.service_name,
-            "time": datetime.datetime.utcnow().isoformat() + "Z",
+            "time": datetime.datetime.now(datetime.UTC).isoformat() + "Z",
         }

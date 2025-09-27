@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import datetime
 import json
@@ -72,7 +72,7 @@ class RunService:
             raise CooldownActiveError(retry_after_seconds=retry_after, run=run_value, layers=layers) from exc
 
     def _invoke_orchestrator(self, run_value: str) -> None:
-        payload = {"run": run_value, "triggeredAt": datetime.datetime.utcnow().isoformat() + "Z"}
+        payload = {"run": run_value, "triggeredAt": datetime.datetime.now(datetime.UTC).isoformat() + "Z"}
         self._lambda.invoke(
             FunctionName=self._settings.orchestrator_function,
             InvocationType="Event",
