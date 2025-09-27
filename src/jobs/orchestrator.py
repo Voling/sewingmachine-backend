@@ -1,8 +1,10 @@
 import json, os, uuid, datetime
 import boto3
-dms = boto3.client('dms')
-events = boto3.client('events')
-lambda_ = boto3.client('lambda')
+from botocore.config import Config
+CLIENT_CONFIG = Config(connect_timeout=3, read_timeout=10)
+dms = boto3.client('dms', config=CLIENT_CONFIG)
+events = boto3.client('events', config=CLIENT_CONFIG)
+lambda_ = boto3.client('lambda', config=CLIENT_CONFIG)
 
 TASK_ARN = os.environ['DMS_TASK_ARN']
 EVENTBUS = os.environ.get('EVENTBUS_NAME', 'default')
@@ -63,5 +65,6 @@ def lambda_handler(event, ctx):
         "headers": {"content-type": "application/json"},
         "body": json.dumps({"jobId": job_id, "status": "accepted", "run": RUN})
     }
+
 
 
