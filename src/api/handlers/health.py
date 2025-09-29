@@ -2,16 +2,14 @@
 
 from app.application.health_service import HealthService
 from app.config.settings import get_health_settings
-from app.presentation.http import build_json_response, build_preflight_response, extract_origin
+from app.presentation.http import prepare_request, build_json_response, build_preflight_response, extract_origin
 
 
 def lambda_handler(event, _context):
-    event = event or {}
     settings = get_health_settings()
-    origin = extract_origin(event)
-
-    if event.get("httpMethod") == "OPTIONS":
-        return build_preflight_response(settings.allowed_origin, ["OPTIONS", "GET"], request_origin=origin)
+    event_obj, origin, preflight = prepare_request(event, ["OPTIONS", "GET"], settings.allowed_origin)
+    if preflight:
+        return preflight
 
     service = HealthService(settings)
     payload = service.execute()

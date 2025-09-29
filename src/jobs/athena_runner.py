@@ -1,51 +1,97 @@
-import os, json, time
+from __future__ import annotations
+
+import json
+import os
+import time
+from dataclasses import dataclass
+from typing import Iterable
+
 import boto3
-athena = boto3.client('athena')
-events = boto3.client('events')
+from botocore.config import Config
 
-OUTPUT = os.environ['ATHENA_OUTPUT']
-WG = os.environ.get('ATHENA_WG', 'primary')
-CATALOG = os.environ.get('ATHENA_CATALOG', 'AwsDataCatalog')
-EVENTBUS = os.environ.get('EVENTBUS_NAME', 'default')
+CLIENT_CONFIG = Config(connect_timeout=3, read_timeout=10)
 
-def run_sql(sql, db):
-    q = athena.start_query_execution(
-        QueryString=sql,
-        QueryExecutionContext={"Database": db, "Catalog": CATALOG},
-        ResultConfiguration={"OutputLocation": OUTPUT},
-        WorkGroup=WG
+athena = boto3.client('athena', config=CLIENT_CONFIG)
+events = boto3.client('events', config=CLIENT_CONFIG)
+
+
+@dataclass(frozen=True)
+class AthenaRunnerConfig:
+    output_location: str
+    workgroup: str
+    catalog: str
+    event_bus: str
+
+
+@dataclass(frozen=True)
+class RefreshRequest:
+    run: str
+    cleanup_rule: str | None = None
+
+
+class AthenaRunnerService:
+    def __init__(self, athena_client, events_client, config: AthenaRunnerConfig) -> None:
+        self._athena = athena_client
+        self._events = events_client
+        self._config = config
+
+    def run_refresh(self, request: RefreshRequest) -> dict[str, str | bool]:
+        self._run_sql(RESIDENT_CTAS.replace(':RUN', request.run), 'staging')
+        self._run_sql(VISIT_CTAS.replace(':RUN', request.run), 'staging')
+
+        for statement, database in _MERGE_PIPELINE:
+            self._run_sql(statement, database)
+
+        if request.cleanup_rule:
+            self._events.remove_targets(
+                Rule=request.cleanup_rule,
+                Ids=['athena-runner'],
+                EventBusName=self._config.event_bus,
+            )
+            self._events.delete_rule(
+                Name=request.cleanup_rule,
+                EventBusName=self._config.event_bus,
+                Force=True,
+            )
+
+        return {"ok": True, "run": request.run}
+
+    def _run_sql(self, sql: str, database: str) -> str:
+        response = self._athena.start_query_execution(
+            QueryString=sql,
+            QueryExecutionContext={"Database": database, "Catalog": self._config.catalog},
+            ResultConfiguration={"OutputLocation": self._config.output_location},
+            WorkGroup=self._config.workgroup,
+        )
+        execution_id = response['QueryExecutionId']
+        while True:
+            status = self._athena.get_query_execution(QueryExecutionId=execution_id)['QueryExecution']['Status']['State']
+            if status in {'SUCCEEDED', 'FAILED', 'CANCELLED'}:
+                if status != 'SUCCEEDED':
+                    raise RuntimeError(f"Athena failed: {status}")
+                return execution_id
+            time.sleep(2)
+
+
+def _load_config() -> AthenaRunnerConfig:
+    return AthenaRunnerConfig(
+        output_location=os.environ['ATHENA_OUTPUT'],
+        workgroup=os.environ.get('ATHENA_WG', 'primary'),
+        catalog=os.environ.get('ATHENA_CATALOG', 'AwsDataCatalog'),
+        event_bus=os.environ.get('EVENTBUS_NAME', 'default'),
     )
-    qid = q['QueryExecutionId']
-    while True:
-        s = athena.get_query_execution(QueryExecutionId=qid)['QueryExecution']['Status']['State']
-        if s in ('SUCCEEDED','FAILED','CANCELLED'):
-            if s != 'SUCCEEDED':
-                raise RuntimeError(f"Athena failed: {s}")
-            return qid
-        time.sleep(2)
 
-def handler(event, ctx):
+
+def lambda_handler(event, ctx):
     payload = event if isinstance(event, dict) else json.loads(event)
-    run = payload.get('run', '2025-08-13')
-    cleanup_rule = payload.get('cleanupRule')
+    request = RefreshRequest(
+        run=payload.get('run', '2025-08-13'),
+        cleanup_rule=payload.get('cleanupRule'),
+    )
+    service = AthenaRunnerService(athena, events, _load_config())
+    result = service.run_refresh(request)
+    return result
 
-    run_sql(RESIDENT_CTAS.replace(':RUN', run), 'staging')
-    run_sql(VISIT_CTAS.replace(':RUN', run), 'staging')
-
-    run_sql(RESIDENT_MERGE, 'silver')
-    run_sql(VISIT_MERGE, 'silver')
-
-    run_sql(RESIDENT_SOFT_DELETE, 'silver')
-    run_sql(VISIT_SOFT_DELETE, 'silver')
-
-    run_sql(DIM_RESIDENT_MERGE, 'gold')
-    run_sql(FACT_VISIT_MERGE, 'gold')
-
-    if cleanup_rule:
-        events.remove_targets(Rule=cleanup_rule, Ids=["athena-runner"], EventBusName=EVENTBUS)
-        events.delete_rule(Name=cleanup_rule, EventBusName=EVENTBUS, Force=True)
-
-    return {"ok": True, "run": run}
 
 # SQL strings identical to the top-level version
 RESIDENT_CTAS = """
@@ -199,4 +245,11 @@ WHEN NOT MATCHED THEN INSERT (
 );
 """
 
-
+_MERGE_PIPELINE: Iterable[tuple[str, str]] = (
+    (RESIDENT_MERGE, 'silver'),
+    (VISIT_MERGE, 'silver'),
+    (RESIDENT_SOFT_DELETE, 'silver'),
+    (VISIT_SOFT_DELETE, 'silver'),
+    (DIM_RESIDENT_MERGE, 'gold'),
+    (FACT_VISIT_MERGE, 'gold'),
+)

@@ -4,7 +4,7 @@ from app.application.materialize_service import MaterializeService
 from app.config.settings import get_materialize_settings
 from app.domain.errors import DomainError
 from app.infrastructure.aws_clients import get_clients
-from app.presentation.http import build_json_response, build_preflight_response, extract_origin, parse_json
+from app.presentation.http import prepare_request, build_json_response, build_preflight_response, extract_origin, parse_json
 from app.presentation.logging import get_logger
 
 
@@ -13,16 +13,14 @@ ALLOWED_METHODS = ["OPTIONS", "POST"]
 
 
 def lambda_handler(event, _context):
-    event = event or {}
     settings = get_materialize_settings()
-    method = event.get("httpMethod", "").upper()
-    origin = extract_origin(event)
+    event_obj, origin, preflight = prepare_request(event, ALLOWED_METHODS, settings.allowed_origin)
+    if preflight:
+        return preflight
 
-    if method == "OPTIONS":
-        return build_preflight_response(settings.allowed_origin, ALLOWED_METHODS, request_origin=origin)
 
     try:
-        body = parse_json(event.get("body"), default={})
+        body = parse_json(event_obj.get("body"), default={})
     except ValueError:
         error_payload = {"error": {"code": "BadJson", "message": "Invalid JSON"}}
         return build_json_response(400, error_payload, settings.allowed_origin, ALLOWED_METHODS, request_origin=origin)

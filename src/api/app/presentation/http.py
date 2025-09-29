@@ -60,13 +60,18 @@ def extract_origin(event: dict | None) -> str | None:
     if origin:
         return origin
 
-    multi_headers = event.get("multiValueHeaders")
-    if isinstance(multi_headers, dict):
-        for key, value in multi_headers.items():
-            if key.lower() == "origin":
-                if isinstance(value, list):
-                    return value[0] if value else None
-                return value
+    return _origin_from_multi_headers(event.get("multiValueHeaders"))
+
+
+def _origin_from_multi_headers(headers: Any) -> str | None:
+    if not isinstance(headers, dict):
+        return None
+    for key, value in headers.items():
+        if key.lower() != "origin":
+            continue
+        if isinstance(value, list):
+            return value[0] if value else None
+        return value
     return None
 
 
@@ -104,3 +109,18 @@ def _normalize_origins(value: str | Sequence[str]) -> list[str]:
 
 def _format_methods(methods: Iterable[str]) -> str:
     return ",".join(sorted({m.upper() for m in methods}))
+
+
+def prepare_request(event: dict | str | None, allowed_methods: Iterable[str], allowed_origin: str | Sequence[str]) -> tuple[dict, str | None, dict | None]:
+    evt: dict
+    if isinstance(event, str):
+        evt = json.loads(event)
+    elif isinstance(event, dict):
+        evt = event
+    else:
+        evt = {}
+    origin = extract_origin(evt)
+    method = (evt.get("httpMethod") or "").upper()
+    if method == "OPTIONS":
+        return evt, origin, build_preflight_response(allowed_origin, allowed_methods, request_origin=origin)
+    return evt, origin, None
