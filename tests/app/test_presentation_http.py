@@ -49,3 +49,18 @@ def test_extract_origin_reads_multi_value_headers():
 
 def test_parse_json_returns_default():
     assert http.parse_json(None, default={"x": 1}) == {"x": 1}
+
+
+def test_prepare_request_returns_event_and_origin():
+    event, origin, preflight = http.prepare_request({"httpMethod": "GET", "headers": {"Origin": "http://example"}}, ["GET"], "http://example")
+    assert origin == "http://example"
+    assert preflight is None
+    assert event["httpMethod"] == "GET"
+
+
+def test_prepare_request_handles_options():
+    _event = {"httpMethod": "OPTIONS", "headers": {"Origin": "http://localhost"}}
+    event, origin, preflight = http.prepare_request(_event, ["OPTIONS", "POST"], "http://localhost")
+    assert origin == "http://localhost"
+    assert preflight["statusCode"] == 200
+    assert event["httpMethod"] == "OPTIONS"

@@ -1,8 +1,8 @@
-﻿from types import SimpleNamespace
+from types import SimpleNamespace
 
 import pytest
 
-import src.jobs.athena_runner as athena_runner
+import src.jobs.athena_runner as runner
 
 
 class FakeAthena:
@@ -21,52 +21,67 @@ class FakeAthena:
         return {"QueryExecution": {"Status": {"State": state}}}
 
 
+class FakeEvents:
+    def __init__(self):
+        self.remove_calls = []
+        self.delete_calls = []
+
+    def remove_targets(self, **kwargs):
+        self.remove_calls.append(kwargs)
+
+    def delete_rule(self, **kwargs):
+        self.delete_calls.append(kwargs)
+
+
 @pytest.fixture(autouse=True)
 def patch_sleep(monkeypatch):
-    monkeypatch.setattr(athena_runner, "time", SimpleNamespace(sleep=lambda *_: None))
+    monkeypatch.setattr(runner, "time", SimpleNamespace(sleep=lambda *_: None))
 
 
-def test_run_sql_waits_until_success(monkeypatch):
+@pytest.fixture
+def base_config():
+    return runner.AthenaRunnerConfig(
+        output_location="s3://bucket/output/",
+        workgroup="primary",
+        catalog="AwsDataCatalog",
+        event_bus="bus",
+    )
+
+
+def test_run_sql_waits_until_success(monkeypatch, base_config):
     fake_athena = FakeAthena(states=["RUNNING", "SUCCEEDED"])
-    monkeypatch.setattr(athena_runner, "athena", fake_athena)
+    service = runner.AthenaRunnerService(fake_athena, FakeEvents(), base_config)
 
-    qid = athena_runner.run_sql("SELECT 1", "db")
+    qid = service._run_sql("SELECT 1", "db")
 
     assert qid == "qid-123"
     assert fake_athena.started[0]["QueryString"] == "SELECT 1"
     assert fake_athena.started[0]["QueryExecutionContext"]["Database"] == "db"
 
 
-def test_run_sql_raises_on_failure(monkeypatch):
+def test_run_sql_raises_on_failure(monkeypatch, base_config):
     fake_athena = FakeAthena(states=["FAILED"])
-    monkeypatch.setattr(athena_runner, "athena", fake_athena)
+    service = runner.AthenaRunnerService(fake_athena, FakeEvents(), base_config)
 
     with pytest.raises(RuntimeError):
-        athena_runner.run_sql("SELECT 1", "db")
+        service._run_sql("SELECT 1", "db")
 
 
-def test_handler_runs_queries_and_cleans_up(monkeypatch):
+def test_handler_runs_queries_and_cleans_up(monkeypatch, base_config):
     calls = []
 
-    def fake_run_sql(sql, db):
-        calls.append((sql.strip().splitlines()[0], db))
-        return "qid"
+    class StubService(runner.AthenaRunnerService):
+        def _run_sql(self, sql: str, database: str) -> str:
+            calls.append((sql.strip().splitlines()[0], database))
+            return "qid"
 
-    monkeypatch.setattr(athena_runner, "run_sql", fake_run_sql)
+    fake_events = FakeEvents()
 
-    events_calls = {}
-
-    class FakeEvents:
-        def remove_targets(self, **kwargs):
-            events_calls.setdefault("remove", []).append(kwargs)
-
-        def delete_rule(self, **kwargs):
-            events_calls.setdefault("delete", []).append(kwargs)
-
-    monkeypatch.setattr(athena_runner, "events", FakeEvents())
+    monkeypatch.setattr(runner, "_load_config", lambda: base_config)
+    monkeypatch.setattr(runner, "AthenaRunnerService", lambda athena_client, events_client, config: StubService(FakeAthena(["SUCCEEDED"]), fake_events, config))
 
     event = {"run": "2024-01-01", "cleanupRule": "rule-1"}
-    response = athena_runner.handler(event, None)
+    response = runner.lambda_handler(event, None)
 
     assert len(calls) == 8
     assert calls[0][1] == "staging"
@@ -74,5 +89,5 @@ def test_handler_runs_queries_and_cleans_up(monkeypatch):
 
     assert response["ok"] is True
     assert response["run"] == "2024-01-01"
-    assert events_calls["remove"][0]["Rule"] == "rule-1"
-    assert events_calls["delete"][0]["Name"] == "rule-1"
+    assert fake_events.remove_calls[0]["Rule"] == "rule-1"
+    assert fake_events.delete_calls[0]["Name"] == "rule-1"

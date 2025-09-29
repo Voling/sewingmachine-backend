@@ -43,10 +43,16 @@ def patched_environment(monkeypatch):
     monkeypatch.setattr(orchestrator, "dms", dms)
     monkeypatch.setattr(orchestrator, "events", events)
     monkeypatch.setattr(orchestrator, "lambda_", lamb)
-    monkeypatch.setattr(orchestrator, "TASK_ARN", "task-arn")
-    monkeypatch.setattr(orchestrator, "EVENTBUS", "bus")
-    monkeypatch.setattr(orchestrator, "ATHENA_RUNNER_FN", "lambda-arn")
-    monkeypatch.setattr(orchestrator, "RUN", "2024-01-01")
+    monkeypatch.setattr(
+        orchestrator,
+        "_load_config",
+        lambda: orchestrator.OrchestratorConfig(
+            task_arn="task-arn",
+            event_bus="bus",
+            runner_function_arn="lambda-arn",
+            default_run="2024-01-01",
+        ),
+    )
     monkeypatch.setattr(orchestrator.uuid, "uuid4", lambda: "job-123")
 
     return dms, events, lamb

@@ -9,7 +9,7 @@ from app.infrastructure import aws_clients
 def test_get_clients_caches_instances(monkeypatch):
     called = {}
 
-    def fake_client(name, region_name=None):
+    def fake_client(name, region_name=None, config=None):
         called.setdefault(name, 0)
         called[name] += 1
         return MagicMock(name=f"client-{name}")
