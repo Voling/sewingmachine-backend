@@ -237,6 +237,9 @@ resource "aws_api_gateway_method" "health_options" {
   resource_id   = aws_api_gateway_resource.health.id
   http_method   = "OPTIONS"
   authorization = "NONE"
+  request_parameters = {
+    "method.request.header.Origin" = false
+  }
 }
 
 resource "aws_api_gateway_method" "run_options" {
@@ -244,6 +247,9 @@ resource "aws_api_gateway_method" "run_options" {
   resource_id   = aws_api_gateway_resource.run.id
   http_method   = "OPTIONS"
   authorization = "NONE"
+  request_parameters = {
+    "method.request.header.Origin" = false
+  }
 }
 
 resource "aws_api_gateway_method" "query_options" {
@@ -251,6 +257,9 @@ resource "aws_api_gateway_method" "query_options" {
   resource_id   = aws_api_gateway_resource.query.id
   http_method   = "OPTIONS"
   authorization = "NONE"
+  request_parameters = {
+    "method.request.header.Origin" = false
+  }
 }
 
 resource "aws_api_gateway_method" "schemas_options" {
@@ -258,6 +267,9 @@ resource "aws_api_gateway_method" "schemas_options" {
   resource_id   = aws_api_gateway_resource.schemas.id
   http_method   = "OPTIONS"
   authorization = "NONE"
+  request_parameters = {
+    "method.request.header.Origin" = false
+  }
 }
 
 resource "aws_api_gateway_method" "materialize_options" {
@@ -265,6 +277,9 @@ resource "aws_api_gateway_method" "materialize_options" {
   resource_id   = aws_api_gateway_resource.materialize.id
   http_method   = "OPTIONS"
   authorization = "NONE"
+  request_parameters = {
+    "method.request.header.Origin" = false
+  }
 }
 
 # OPTIONS responses
@@ -353,132 +368,49 @@ resource "aws_api_gateway_integration" "health_options" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = aws_api_gateway_resource.health.id
   http_method = aws_api_gateway_method.health_options.http_method
-  type        = "MOCK"
-  request_templates = {
-    "application/json" = jsonencode({ statusCode = 200 })
-  }
-  passthrough_behavior = "WHEN_NO_MATCH"
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_health_invoke_arn
 }
 
 resource "aws_api_gateway_integration" "run_options" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = aws_api_gateway_resource.run.id
   http_method = aws_api_gateway_method.run_options.http_method
-  type        = "MOCK"
-  request_templates = {
-    "application/json" = jsonencode({ statusCode = 200 })
-  }
-  passthrough_behavior = "WHEN_NO_MATCH"
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_run_invoke_arn
 }
 
 resource "aws_api_gateway_integration" "query_options" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = aws_api_gateway_resource.query.id
   http_method = aws_api_gateway_method.query_options.http_method
-  type        = "MOCK"
-  request_templates = {
-    "application/json" = jsonencode({ statusCode = 200 })
-  }
-  passthrough_behavior = "WHEN_NO_MATCH"
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_query_invoke_arn
 }
 
 resource "aws_api_gateway_integration" "schemas_options" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = aws_api_gateway_resource.schemas.id
   http_method = aws_api_gateway_method.schemas_options.http_method
-  type        = "MOCK"
-  request_templates = {
-    "application/json" = jsonencode({ statusCode = 200 })
-  }
-  passthrough_behavior = "WHEN_NO_MATCH"
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_schemas_invoke_arn
 }
 
 resource "aws_api_gateway_integration" "materialize_options" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = aws_api_gateway_resource.materialize.id
   http_method = aws_api_gateway_method.materialize_options.http_method
-  type        = "MOCK"
-  request_templates = {
-    "application/json" = jsonencode({ statusCode = 200 })
-  }
-  passthrough_behavior = "WHEN_NO_MATCH"
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_materialize_invoke_arn
 }
 
 # OPTIONS integration responses
-resource "aws_api_gateway_integration_response" "health_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  resource_id = aws_api_gateway_resource.health.id
-  http_method = aws_api_gateway_method.health_options.http_method
-  status_code = aws_api_gateway_method_response.health_options_200.status_code
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = local.cors_allow_headers
-    "method.response.header.Access-Control-Allow-Methods" = local.cors_allow_methods["health"]
-    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin
-  }
-  response_templates = {
-    "application/json" = "{}"
-  }
-}
-
-resource "aws_api_gateway_integration_response" "run_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  resource_id = aws_api_gateway_resource.run.id
-  http_method = aws_api_gateway_method.run_options.http_method
-  status_code = aws_api_gateway_method_response.run_options_200.status_code
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = local.cors_allow_headers
-    "method.response.header.Access-Control-Allow-Methods" = local.cors_allow_methods["run"]
-    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin
-  }
-  response_templates = {
-    "application/json" = "{}"
-  }
-}
-
-resource "aws_api_gateway_integration_response" "query_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  resource_id = aws_api_gateway_resource.query.id
-  http_method = aws_api_gateway_method.query_options.http_method
-  status_code = aws_api_gateway_method_response.query_options_200.status_code
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = local.cors_allow_headers
-    "method.response.header.Access-Control-Allow-Methods" = local.cors_allow_methods["query"]
-    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin
-  }
-  response_templates = {
-    "application/json" = "{}"
-  }
-}
-
-resource "aws_api_gateway_integration_response" "schemas_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  resource_id = aws_api_gateway_resource.schemas.id
-  http_method = aws_api_gateway_method.schemas_options.http_method
-  status_code = aws_api_gateway_method_response.schemas_options_200.status_code
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = local.cors_allow_headers
-    "method.response.header.Access-Control-Allow-Methods" = local.cors_allow_methods["schemas"]
-    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin
-  }
-  response_templates = {
-    "application/json" = "{}"
-  }
-}
-
-resource "aws_api_gateway_integration_response" "materialize_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  resource_id = aws_api_gateway_resource.materialize.id
-  http_method = aws_api_gateway_method.materialize_options.http_method
-  status_code = aws_api_gateway_method_response.materialize_options_200.status_code
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = local.cors_allow_headers
-    "method.response.header.Access-Control-Allow-Methods" = local.cors_allow_methods["materialize"]
-    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin
-  }
-  response_templates = {
-    "application/json" = "{}"
-  }
-}
+// Integration responses are not used with Lambda proxy integrations for OPTIONS
 
 resource "aws_api_gateway_deployment" "this" {
   rest_api_id = aws_api_gateway_rest_api.api.id
@@ -503,11 +435,11 @@ resource "aws_api_gateway_deployment" "this" {
     aws_api_gateway_integration.query,
     aws_api_gateway_integration.schemas,
     aws_api_gateway_integration.materialize,
-    aws_api_gateway_integration_response.health_options_200,
-    aws_api_gateway_integration_response.run_options_200,
-    aws_api_gateway_integration_response.query_options_200,
-    aws_api_gateway_integration_response.schemas_options_200,
-    aws_api_gateway_integration_response.materialize_options_200
+    aws_api_gateway_integration.health_options,
+    aws_api_gateway_integration.run_options,
+    aws_api_gateway_integration.query_options,
+    aws_api_gateway_integration.schemas_options,
+    aws_api_gateway_integration.materialize_options
   ]
 }
 
@@ -551,7 +483,8 @@ resource "aws_lambda_permission" "run" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_run_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = format("%s/*/POST/run", aws_api_gateway_rest_api.api.execution_arn)
+  # Allow API Gateway to invoke for any method (POST, OPTIONS) on any resource
+  source_arn    = format("%s/*/*/*", aws_api_gateway_rest_api.api.execution_arn)
 }
 
 resource "aws_lambda_permission" "query" {
@@ -590,12 +523,12 @@ resource "aws_api_gateway_domain_name" "custom" {
   tags            = var.tags
 }
 
-resource "aws_api_gateway_base_path_mapping" "this" {
+# Root base path mapping so that https://api.<domain>/* maps to the API stage.
+resource "aws_api_gateway_base_path_mapping" "root" {
   count       = local.create_custom_domain ? 1 : 0
   api_id      = aws_api_gateway_rest_api.api.id
   stage_name  = aws_api_gateway_stage.prod.stage_name
   domain_name = aws_api_gateway_domain_name.custom[count.index].domain_name
-  base_path   = "api"
 }
 
 output "invoke_url" {

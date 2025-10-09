@@ -17,8 +17,8 @@ resource "aws_lambda_function" "health" {
   runtime          = "python3.11"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
-  timeout          = 3
-  memory_size      = 128
+  timeout          = 10
+  memory_size      = 256
   architectures    = ["x86_64"]
 
   environment {
@@ -37,8 +37,8 @@ resource "aws_lambda_function" "run" {
   runtime          = "python3.11"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
-  timeout          = 3
-  memory_size      = 128
+  timeout          = 10
+  memory_size      = 256
   architectures    = ["x86_64"]
 
   environment {
@@ -111,8 +111,8 @@ resource "aws_lambda_function" "query" {
   runtime          = "python3.11"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
-  timeout          = 3
-  memory_size      = 128
+  timeout          = 10
+  memory_size      = 256
   architectures    = ["x86_64"]
 
   environment {
@@ -134,8 +134,8 @@ resource "aws_lambda_function" "schemas" {
   runtime          = "python3.11"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
-  timeout          = 3
-  memory_size      = 128
+  timeout          = 10
+  memory_size      = 256
   architectures    = ["x86_64"]
 
   environment {
@@ -154,8 +154,8 @@ resource "aws_lambda_function" "materialize" {
   runtime          = "python3.11"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
-  timeout          = 3
-  memory_size      = 128
+  timeout          = 10
+  memory_size      = 256
   architectures    = ["x86_64"]
 
   environment {
